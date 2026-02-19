@@ -29,7 +29,6 @@ import { InteractiveMap } from './components/InteractiveMap';
 import { CalendarTool } from './components/CalendarTool';
 import { CombatMonitor } from './components/CombatMonitor';
 import { DiceAnimationOverlay } from './components/DiceAnimationOverlay';
-import { explainRule } from './services/geminiService';
 
 const createEmptyArmor = (): ArmorItem => ({
   equipado: false,
@@ -129,7 +128,6 @@ const App: React.FC = () => {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [loading, setLoading] = useState(false);
   
   const [calendarNotes, setCalendarNotes] = useState<Record<string, string>>({});
   const [calendarEvents, setCalendarEvents] = useState<Record<string, string[]>>({});
@@ -150,7 +148,6 @@ const App: React.FC = () => {
 
   const importFileRef = useRef<HTMLInputElement>(null);
 
-  // Carregamento Inicial do LocalStorage
   useEffect(() => {
     const loadSavedData = () => {
       try {
@@ -185,7 +182,6 @@ const App: React.FC = () => {
     loadSavedData();
   }, []);
 
-  // Auto-Save robusto
   useEffect(() => { localStorage.setItem('soulEaterChars', JSON.stringify(characters)); }, [characters]);
   useEffect(() => { localStorage.setItem('soulEaterLogs', JSON.stringify(logs)); }, [logs]);
   useEffect(() => { localStorage.setItem('soulEaterActiveCombat', JSON.stringify(combatState)); }, [combatState]);
@@ -200,7 +196,6 @@ const App: React.FC = () => {
     }));
   }, [calendarNotes, calendarEvents, playerDates, currentCampaignDate]);
 
-  // Funções de Exportação e Importação
   const handleExportJSON = () => {
     const fullSave = {
       characters,
@@ -236,8 +231,6 @@ const App: React.FC = () => {
     reader.onload = (e) => {
       try {
         const data = JSON.parse(e.target?.result as string);
-        
-        // Atualiza todos os estados baseados no arquivo
         if (data.characters) setCharacters(data.characters);
         if (data.logs) setLogs(data.logs);
         if (data.calendar) {
@@ -374,7 +367,6 @@ const App: React.FC = () => {
     <div className="min-h-screen flex flex-col">
       <DiceAnimationOverlay rollData={currentDiceAnimation} onClose={() => setCurrentDiceAnimation(null)} />
       
-      {/* Botão de Sistema Flutuante */}
       <button 
         onClick={() => setShowSettings(true)}
         className="fixed bottom-6 right-6 w-14 h-14 bg-purple-600 hover:bg-purple-500 text-white rounded-full flex items-center justify-center shadow-2xl z-[200] transition-all hover:scale-110 active:scale-95 border-2 border-purple-400"
@@ -481,10 +473,6 @@ const App: React.FC = () => {
                 <button onClick={() => setToolsSubTab('diary')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${toolsSubTab === 'diary' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20' : 'text-zinc-600 hover:text-purple-400'}`}><ClipboardList size={18}/><span className="text-[10px] font-black uppercase tracking-widest">Log</span></button>
               </div>
               <DiceRoller onRoll={showRoll} />
-              <div className="bg-zinc-950 p-8 rounded-xl border border-purple-900/10">
-                <h4 className="text-[12px] font-black text-zinc-500 uppercase mb-6 tracking-widest">Consultar Grimório</h4>
-                <input placeholder="Dúvida sobre regras..." className="w-full bg-black p-4 text-base border border-zinc-900 rounded-lg focus:border-purple-600 outline-none transition-all" onKeyDown={e => { if(e.key === 'Enter') { explainRule((e.target as HTMLInputElement).value).then(res => addLog(res, 'ai')); (e.target as HTMLInputElement).value = ''; } }} />
-              </div>
             </div>
             <div className="lg:col-span-3">
               {toolsSubTab === 'diary' && (
@@ -505,7 +493,6 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* Modal de Configurações do Sistema */}
       {showSettings && (
         <div className="fixed inset-0 z-[300] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-[#0c0a0e] border border-purple-600/30 rounded-3xl w-full max-w-xl overflow-hidden shadow-[0_0_50px_rgba(168,85,247,0.2)]">

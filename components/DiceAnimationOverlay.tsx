@@ -1,4 +1,6 @@
-import { useEffect, useState, useMemo } from 'react';
+
+// Add missing React import
+import React, { useEffect, useState, useMemo } from 'react';
 import { Roll, RollData } from '../types';
 
 interface DiceAnimationOverlayProps {
@@ -6,6 +8,7 @@ interface DiceAnimationOverlayProps {
   onClose: () => void;
 }
 
+// Fix: Add React.FC type definition correctly with the React import
 export const DiceAnimationOverlay: React.FC<DiceAnimationOverlayProps> = ({ rollData, onClose }) => {
   const [visible, setVisible] = useState(false);
   const [displayValues, setDisplayValues] = useState<number[]>([]);
