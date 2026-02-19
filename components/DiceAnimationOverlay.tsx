@@ -42,19 +42,20 @@ export const DiceAnimationOverlay: React.FC<DiceAnimationOverlayProps> = ({ roll
     };
   }, [rollData, onClose]);
 
-  const groupedRolls = useMemo(() => {
+  // FIX: Explicitly define the return type for the useMemo hook to ensure proper inference of the grouped rolls structure.
+  const groupedRolls = useMemo<Record<string, { rolls: Roll[], indexes: number[] }>>(() => {
     const initialValue: Record<string, { rolls: Roll[], indexes: number[] }> = {};
     if (!rollData?.rolls) {
         return initialValue;
     }
-    // FIX: Correctly type the `reduce` accumulator to ensure proper type inference for `groupedRolls`, preventing downstream errors.
-    return rollData.rolls.reduce((acc: Record<string, { rolls: Roll[], indexes: number[] }>, roll, index) => {
+    // FIX: Provide explicit type parameters to the reduce function and use non-null assertion to prevent 'unknown' or 'undefined' errors during accumulation.
+    return rollData.rolls.reduce<Record<string, { rolls: Roll[], indexes: number[] }>>((acc, roll, index) => {
         const key = roll.source || 'Rolagem';
         if (!acc[key]) {
             acc[key] = { rolls: [], indexes: [] };
         }
-        acc[key].rolls.push(roll);
-        acc[key].indexes.push(index);
+        acc[key]!.rolls.push(roll);
+        acc[key]!.indexes.push(index);
         return acc;
     }, initialValue);
   }, [rollData]);
@@ -73,7 +74,9 @@ export const DiceAnimationOverlay: React.FC<DiceAnimationOverlayProps> = ({ roll
         <div className={`my-4 min-h-[60px] ${hasGroups ? 'space-y-3' : 'flex justify-center flex-wrap items-center gap-3'}`}>
           {hasGroups ? (
             Object.entries(groupedRolls).map(([source, data]) => {
-              const subtotal = data.rolls.reduce((sum, roll) => sum + roll.value, 0);
+              // FIX: Use a type cast to ensure properties 'rolls' and 'indexes' are recognized on the grouped data object within the JSX mapping.
+              const groupData = data as { rolls: Roll[], indexes: number[] };
+              const subtotal = groupData.rolls.reduce((sum, roll) => sum + roll.value, 0);
               return (
                 <div key={source} className="bg-black/40 p-3 rounded-xl border border-purple-900/50 animate-roll-in">
                   <div className="flex justify-between items-center mb-2 px-1">
@@ -81,10 +84,10 @@ export const DiceAnimationOverlay: React.FC<DiceAnimationOverlayProps> = ({ roll
                     <span className="text-lg font-black text-white animate-total-reveal" style={{ animationDelay: `1.3s` }}>{subtotal}</span>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    {data.rolls.map((roll, i) => (
-                      <div key={data.indexes[i]} className="flex flex-col items-center" style={{ animationDelay: `${data.indexes[i] * 80}ms` }}>
+                    {groupData.rolls.map((roll, i) => (
+                      <div key={groupData.indexes[i]} className="flex flex-col items-center" style={{ animationDelay: `${groupData.indexes[i] * 80}ms` }}>
                         <div className="w-10 h-10 bg-black rounded-lg border-2 border-purple-800 flex items-center justify-center text-lg font-black text-white shadow-lg">
-                          <span>{displayValues[data.indexes[i]] || 0}</span>
+                          <span>{displayValues[groupData.indexes[i]] || 0}</span>
                         </div>
                         <span className="text-[10px] text-zinc-500 font-bold mt-1">d{roll.type}</span>
                       </div>

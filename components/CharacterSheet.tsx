@@ -138,7 +138,6 @@ export const CharacterSheet: React.FC<Props> = ({ char, updateChar, isCompanion,
         const currentRank = (targetChar as any)[key];
         ranks.forEach(rank => {
           if (ranks.indexOf(rank) <= ranks.indexOf(currentRank)) {
-            // Added cast to any for index access to avoid unknown addition error
             total += (MASTERY_XP_COSTS as any)[rank] || 0;
           }
         });
@@ -162,7 +161,6 @@ export const CharacterSheet: React.FC<Props> = ({ char, updateChar, isCompanion,
     Object.entries(char.vantagensSelecionadas || {}).forEach(([vId, level]) => {
       const def = VANTAGES_DATA.find(v => v.id === vId);
       if (!def) return;
-      // Added cast to number for level to avoid unknown arithmetic error
       const lvl = level as number;
       if (def.cost === 'variable') bonuses.totalCost += lvl;
       else bonuses.totalCost += def.cost;
@@ -201,7 +199,6 @@ export const CharacterSheet: React.FC<Props> = ({ char, updateChar, isCompanion,
       attrPool: totalAttr, skillPool: totalSkills, vantPool: totalVant,
       attrLimit: LEVELING_TABLE[char.nivel]?.attrLimit || 0,
       skillLimit: LEVELING_TABLE[char.nivel]?.skillLimit || 0,
-      // Fixed alBonus typo (was alBonus, should be alAcc)
       hpBonus: hpAcc, alBonus: alAcc, stBonus: stAcc, xpSpentByLevel: xpAcc
     };
   }, [char.nivel]);
@@ -333,7 +330,6 @@ export const CharacterSheet: React.FC<Props> = ({ char, updateChar, isCompanion,
     handleFieldChange('masterySkills', current);
   };
 
-  // FIX: Made the `children` prop optional to resolve typing errors.
   const Card = ({ children, className }: { children?: React.ReactNode, className?: string }) => (
     <div className={`bg-zinc-950/50 p-6 rounded-2xl border border-zinc-900 ${className}`}>
       {children}
@@ -363,14 +359,15 @@ export const CharacterSheet: React.FC<Props> = ({ char, updateChar, isCompanion,
   }
 
   return (
-    <div className={`bg-[#0a0a0c] p-6 md:p-10 rounded-2xl border border-purple-900/20 shadow-2xl transition-all duration-300 relative ${isCompanion ? 'border-purple-600/30 bg-[#0c0c0e]' : ''}`}>
+    <div className={`bg-[#0a0a0c] p-6 md:p-8 rounded-2xl border border-purple-900/20 shadow-2xl transition-all duration-300 relative ${isCompanion ? 'border-purple-600/30 bg-[#0c0c0e]' : ''}`}>
       
       {isCompanion && (
-        <button onClick={() => setIsExpanded(false)} className="absolute top-6 right-10 bg-zinc-900 hover:bg-zinc-800 p-2 rounded-full text-zinc-500" title="Recolher Ficha"><ChevronUp size={20} /></button>
+        <button onClick={() => setIsExpanded(false)} className="absolute top-6 right-8 bg-zinc-900 hover:bg-zinc-800 p-2 rounded-full text-zinc-500" title="Recolher Ficha"><ChevronUp size={20} /></button>
       )}
 
-      {/* HEADER: NIVEL E XP */}
-      <div className="flex flex-col md:flex-row items-start gap-8 mb-8">
+      {/* HEADER: NIVEL E XP - REORGANIZADO PARA PREENCHER ESPAÇOS VAZIOS */}
+      <div className="flex flex-col md:flex-row items-stretch gap-6 mb-4">
+        {/* IMAGEM (VERDE) */}
         <div className="relative group w-32 h-32 md:w-36 md:h-36 shrink-0">
           <input type="file" ref={imageInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
           {char.imageUrl ? (
@@ -388,11 +385,13 @@ export const CharacterSheet: React.FC<Props> = ({ char, updateChar, isCompanion,
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col justify-between h-full w-full">
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-3">
-              <h2 className="title-font text-4xl text-purple-600 tracking-tighter leading-none uppercase">{char.nome || (isCompanion ? 'ARMA DEMONÍACA' : 'ALMA DEVORADORA')}</h2>
-              {isCompanion && <div className="bg-purple-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-tighter"><LinkIcon size={10}/> Sincronizado</div>}
+        {/* CONTAINER DE INFO E XP (VERDE / PREENCHENDO VERMELHO) */}
+        <div className="flex-1 flex flex-col md:flex-row gap-4 items-center md:items-stretch">
+          {/* BLOCO NOME/TITULO (VERDE) */}
+          <div className="flex-1 bg-zinc-950/40 p-4 rounded-2xl border border-zinc-900 flex flex-col justify-center min-w-0">
+            <div className="flex items-center gap-3 mb-2">
+              <h2 className="title-font text-3xl md:text-4xl text-purple-600 tracking-tighter leading-tight uppercase truncate">{char.nome || (isCompanion ? 'ARMA DEMONÍACA' : 'ALMA DEVORADORA')}</h2>
+              {isCompanion && <div className="bg-purple-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-tighter shrink-0"><LinkIcon size={10}/> Sincronizado</div>}
             </div>
             <div className="flex items-center gap-3">
               <div className={`flex items-center gap-1 bg-purple-900/30 px-3 py-1 rounded-full border border-purple-900/20 ${isCompanion ? 'opacity-50 grayscale' : ''}`}>
@@ -401,35 +400,34 @@ export const CharacterSheet: React.FC<Props> = ({ char, updateChar, isCompanion,
                    {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n} className="bg-zinc-950">0{n}</option>)}
                  </select>
               </div>
-              <span className="text-zinc-600 text-[12px] font-bold uppercase tracking-widest">{char.titulo}</span>
+              <span className="text-zinc-600 text-[12px] font-bold uppercase tracking-widest truncate">{char.titulo}</span>
             </div>
           </div>
           
+          {/* BLOCO XP (VERDE / NO ESPAÇO VERMELHO SUPERIOR DIREITO) */}
           {!isCompanion && (
-            <div className="flex flex-col items-start md:items-end gap-3 mt-auto">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-6 bg-zinc-900/30 p-4 rounded-xl border border-purple-900/10 shadow-inner">
-                    <div className="text-center">
-                      <span className="text-[11px] text-zinc-500 block uppercase font-black mb-1">XP Restante</span>
-                      <div className="text-xl font-black text-purple-400">{char.experiencia - levelLimits.xpSpentByLevel - char.experienciaGasta - masteryXpSpent}</div>
-                    </div>
-                    <div className="w-[1px] h-8 bg-zinc-800"></div>
-                    <div className="text-center">
-                      <span className="text-[11px] text-zinc-500 block uppercase font-black mb-1">XP Gasto</span>
-                      <div className="text-xl font-black text-zinc-400">{levelLimits.xpSpentByLevel + char.experienciaGasta + masteryXpSpent}</div>
-                    </div>
-                    <div className="w-[1px] h-8 bg-zinc-800"></div>
-                    <div className="text-center">
-                      <span className="text-[11px] text-zinc-500 block uppercase font-black mb-1">XP Total</span>
-                      <div className="text-xl font-black text-white">{char.experiencia}</div>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2 bg-black/40 p-2 rounded-lg border border-zinc-800">
-                  <input type="number" className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-sm w-20 text-purple-400 font-bold outline-none focus:border-purple-600" placeholder="Qtd" value={xpToModify || ''} onChange={e => setXpToModify(parseInt(e.target.value) || 0)} />
-                  <div className="flex gap-1">
-                    <button onClick={() => modifyXp(xpToModify)} className="bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-black uppercase px-3 py-1.5 rounded flex items-center gap-1 transition-all"><PlusCircle size={12} /> Adicionar</button>
-                    <button onClick={() => modifyXp(-xpToModify)} className="bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-[11px] font-black uppercase px-3 py-1.5 rounded flex items-center gap-1 transition-all"><MinusCircle size={12} /> Reduzir</button>
+            <div className="w-full md:w-auto bg-zinc-950/40 p-4 rounded-2xl border border-zinc-900 flex flex-col justify-between gap-3">
+              <div className="flex items-center gap-4 px-2">
+                  <div className="text-center min-w-[60px]">
+                    <span className="text-[9px] text-zinc-500 block uppercase font-black mb-0.5">XP Restante</span>
+                    <div className="text-lg font-black text-purple-400">{char.experiencia - levelLimits.xpSpentByLevel - char.experienciaGasta - masteryXpSpent}</div>
                   </div>
+                  <div className="w-[1px] h-6 bg-zinc-800"></div>
+                  <div className="text-center min-w-[60px]">
+                    <span className="text-[9px] text-zinc-500 block uppercase font-black mb-0.5">XP Gasto</span>
+                    <div className="text-lg font-black text-zinc-400">{levelLimits.xpSpentByLevel + char.experienciaGasta + masteryXpSpent}</div>
+                  </div>
+                  <div className="w-[1px] h-6 bg-zinc-800"></div>
+                  <div className="text-center min-w-[60px]">
+                    <span className="text-[9px] text-zinc-500 block uppercase font-black mb-0.5">XP Total</span>
+                    <div className="text-lg font-black text-white">{char.experiencia}</div>
+                  </div>
+              </div>
+              <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-xl border border-zinc-800">
+                <input type="number" className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs w-16 text-purple-400 font-bold outline-none focus:border-purple-600" placeholder="Qtd" value={xpToModify || ''} onChange={e => setXpToModify(parseInt(e.target.value) || 0)} />
+                <div className="flex gap-1">
+                  <button onClick={() => modifyXp(xpToModify)} className="bg-purple-600 hover:bg-purple-700 text-white text-[9px] font-black uppercase px-2 py-1.5 rounded flex items-center gap-1 transition-all"><PlusCircle size={10} /> Adicionar</button>
+                  <button onClick={() => modifyXp(-xpToModify)} className="bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-[9px] font-black uppercase px-2 py-1.5 rounded flex items-center gap-1 transition-all"><MinusCircle size={10} /> Reduzir</button>
                 </div>
               </div>
             </div>
@@ -437,17 +435,18 @@ export const CharacterSheet: React.FC<Props> = ({ char, updateChar, isCompanion,
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div className="bg-purple-950/20 p-3 rounded-xl border border-purple-900/30 flex justify-between items-center">
-             <div className="flex flex-col"><span className="text-[10px] text-purple-400 uppercase font-black tracking-widest">Atributos</span><span className="text-sm font-bold text-zinc-400">Gasto: {spentPoints.attr} / {levelLimits.attrPool}</span></div>
+      {/* LINHA DE RESUMO DE PONTOS (ALINHADA PARA ELIMINAR O GAP VERMELHO HORIZONTAL) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+          <div className="bg-purple-950/20 p-3 rounded-xl border border-purple-900/30 flex justify-between items-center h-16">
+             <div className="flex flex-col"><span className="text-[10px] text-purple-400 uppercase font-black tracking-widest">Atributos</span><span className="text-xs font-bold text-zinc-400">Gasto: {spentPoints.attr} / {levelLimits.attrPool}</span></div>
              <div className={`text-xl font-black ${spentPoints.attr > levelLimits.attrPool ? 'text-red-500' : 'text-purple-500'}`}>{levelLimits.attrPool - spentPoints.attr}</div>
           </div>
-          <div className="bg-purple-950/20 p-3 rounded-xl border border-purple-900/30 flex justify-between items-center">
-             <div className="flex flex-col"><span className="text-[10px] text-purple-400 uppercase font-black tracking-widest">Perícias</span><span className="text-sm font-bold text-zinc-400">Gasto: {spentPoints.skill} / {levelLimits.skillPool}</span></div>
+          <div className="bg-purple-950/20 p-3 rounded-xl border border-purple-900/30 flex justify-between items-center h-16">
+             <div className="flex flex-col"><span className="text-[10px] text-purple-400 uppercase font-black tracking-widest">Perícias</span><span className="text-xs font-bold text-zinc-400">Gasto: {spentPoints.skill} / {levelLimits.skillPool}</span></div>
              <div className={`text-xl font-black ${spentPoints.skill > levelLimits.skillPool ? 'text-red-500' : 'text-purple-500'}`}>{levelLimits.skillPool - spentPoints.skill}</div>
           </div>
-          <div className="bg-purple-950/20 p-3 rounded-xl border border-purple-900/30 flex justify-between items-center">
-             <div className="flex flex-col"><span className="text-[10px] text-purple-400 uppercase font-black tracking-widest">Vantagens</span><span className="text-sm font-bold text-zinc-400">Gasto: {vantageBonuses.totalCost} / {levelLimits.vantPool}</span></div>
+          <div className="bg-purple-950/20 p-3 rounded-xl border border-purple-900/30 flex justify-between items-center h-16">
+             <div className="flex flex-col"><span className="text-[10px] text-purple-400 uppercase font-black tracking-widest">Vantagens</span><span className="text-xs font-bold text-zinc-400">Gasto: {vantageBonuses.totalCost} / {levelLimits.vantPool}</span></div>
              <div className={`text-xl font-black ${vantageBonuses.totalCost > levelLimits.vantPool ? 'text-red-500' : 'text-purple-500'}`}>{levelLimits.vantPool - vantageBonuses.totalCost}</div>
           </div>
       </div>
@@ -889,7 +888,7 @@ export const CharacterSheet: React.FC<Props> = ({ char, updateChar, isCompanion,
                   <div className="bg-[#0a0c12] border border-blue-900/30 p-8 rounded-3xl relative overflow-hidden group hover:border-blue-600/50 transition-all duration-500 shadow-2xl">
                      <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-600/10 blur-[80px] rounded-full group-hover:bg-blue-600/20 transition-all"></div>
                      <div className="flex items-center gap-8 relative z-10">
-                        <div className="w-24 h-24 bg-zinc-950 rounded-2xl border-2 border-blue-900/50 flex items-center justify-center soul-glow shadow-[0_0_30px_rgba(37,99,235,0.2)] group-hover:scale-110 transition-transform duration-500">
+                        <div className="w-24 h-24 bg-zinc-950 rounded-2xl border-2 border-red-900/50 flex items-center justify-center soul-glow shadow-[0_0_30px_rgba(37,99,235,0.2)] group-hover:scale-110 transition-transform duration-500">
                            <div className="relative w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center">
                               <div className="absolute inset-0 bg-blue-400 blur-lg opacity-40 animate-pulse"></div>
                               <div className="w-8 h-8 bg-blue-400 rounded-full shadow-[0_0_20px_#60a5fa] border border-white/20"></div>
@@ -983,7 +982,8 @@ export const CharacterSheet: React.FC<Props> = ({ char, updateChar, isCompanion,
                  {["C", "B", "A", "S"].map(rank => {
                     const currentRankValue = (char as any)[activeMasteryModal];
                     const rankIndex = ["C", "B", "A", "S"].indexOf(rank);
-                    const currentRankIndex = masteryOptions.indexOf(currentRankValue) - masteryOptions.indexOf("C");
+                    const masteryOptionsShort = ["--", "D", "C", "B", "A", "S"];
+                    const currentRankIndex = masteryOptionsShort.indexOf(currentRankValue) - masteryOptionsShort.indexOf("C");
                     const isUnlocked = rankIndex <= currentRankIndex;
                     const options = MASTERY_SKILLS_DATA[activeMasteryModal]?.[rank] || [];
                     const selectedSkill = (char.masterySkills?.[activeMasteryModal] as any)?.[rank];
