@@ -19,7 +19,13 @@ import {
   Skull,
   X,
   RefreshCw,
-  Info
+  Info,
+  LogIn,
+  ShieldCheck,
+  User as UserIcon,
+  LogOut,
+  ChevronRight,
+  Coffee
 } from 'lucide-react';
 import { Character, Race, Role, LogEntry, ArmorItem, SoulAlignment, CombatState, MapState, RollData, Roll, SavedBattle } from './types';
 import { INITIAL_ATTRIBUTES, RACE_DATA } from './constants';
@@ -122,7 +128,25 @@ fixedScenarios.forEach(scenario => {
   initialMapState.viewOffsets[scenario.id] = { x: 0, y: 0 };
 });
 
+const SECRET_PHRASES = [
+  "O silêncio é a única música da alma",
+  "Sete chaves para sete portões de insanidade",
+  "A morte repousa debaixo de uma xícara de chá",
+  "O Shinigami observa através do espelho quebrado"
+];
+
+const CORRECT_PHRASE = "A morte repousa debaixo de uma xícara de chá";
+
 const App: React.FC = () => {
+  // --- AUTH STATES ---
+  const [userRole, setUserRole] = useState<'master' | 'player' | null>(null);
+  const [userName, setUserName] = useState('');
+  const [authStep, setAuthStep] = useState<1 | 2>(1);
+  const [authInputName, setAuthInputName] = useState('');
+  const [shuffledPhrases, setShuffledPhrases] = useState<string[]>([]);
+  const [authError, setAuthError] = useState('');
+
+  // --- APP STATES ---
   const [activeTab, setActiveTab] = useState<'fichas' | 'map' | 'calendar' | 'tools'>('fichas');
   const [showSettings, setShowSettings] = useState(false);
   const [characters, setCharacters] = useState<Character[]>([]);
@@ -148,7 +172,15 @@ const App: React.FC = () => {
 
   const importFileRef = useRef<HTMLInputElement>(null);
 
+  // Load persistence and Session
   useEffect(() => {
+    const sessionRole = sessionStorage.getItem('seUserRole');
+    const sessionName = sessionStorage.getItem('seUserName');
+    if (sessionRole && sessionName) {
+      setUserRole(sessionRole as any);
+      setUserName(sessionName);
+    }
+
     const loadSavedData = () => {
       try {
         const savedChars = localStorage.getItem('soulEaterChars');
@@ -195,6 +227,52 @@ const App: React.FC = () => {
       currentCampaignDate: currentCampaignDate
     }));
   }, [calendarNotes, calendarEvents, playerDates, currentCampaignDate]);
+
+  const handleNameSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = authInputName.trim();
+    if (!name) {
+      setAuthError('Você deve ter um nome para que eu possa ouvi-lo.');
+      return;
+    }
+
+    if (name.toUpperCase() === 'SATAPLEURA') {
+      setUserRole('master');
+      setUserName(name);
+      sessionStorage.setItem('seUserRole', 'master');
+      sessionStorage.setItem('seUserName', name);
+      addLog(`${name} retornou à Shibusen como Grão-Mestre.`, 'system');
+    } else {
+      // Embaralha as frases antes de mostrar o passo 2
+      const shuffled = [...SECRET_PHRASES].sort(() => Math.random() - 0.5);
+      setShuffledPhrases(shuffled);
+      setAuthStep(2);
+      setAuthError('');
+    }
+  };
+
+  const handlePhraseSubmit = (phrase: string) => {
+    if (phrase === CORRECT_PHRASE) {
+      setUserRole('player');
+      setUserName(authInputName);
+      sessionStorage.setItem('seUserRole', 'player');
+      sessionStorage.setItem('seUserName', authInputName);
+      addLog(`${authInputName} sincronizou sua alma como Devorador.`, 'system');
+    } else {
+      // Falha catastrófica: volta ao início
+      setAuthError('O Shinigami não reconhece essa voz. Sua alma foi rejeitada. Recomece o ritual.');
+      setAuthStep(1);
+      setAuthInputName('');
+    }
+  };
+
+  const handleLogout = () => {
+    setUserRole(null);
+    setUserName('');
+    setAuthStep(1);
+    setAuthInputName('');
+    sessionStorage.clear();
+  };
 
   const handleExportJSON = () => {
     const fullSave = {
@@ -262,6 +340,7 @@ const App: React.FC = () => {
   };
 
   const removeCharacter = (id: string) => {
+    if (userRole !== 'master') return;
     const charToRemove = characters.find(c => c.id === id);
     let newChars = characters.filter(c => c.id !== id);
     if (charToRemove?.companionId) newChars = newChars.filter(c => c.id !== charToRemove.companionId);
@@ -363,17 +442,118 @@ const App: React.FC = () => {
   const companionChar1 = selectedChar?.companionId ? characters.find(c => c.id === selectedChar.companionId) : null;
   const companionChar2 = selectedChar?.companionId2 ? characters.find(c => c.id === selectedChar.companionId2) : null;
 
+  // --- WELCOME SCREEN RENDER ---
+  if (!userRole) {
+    return (
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center p-6 relative overflow-hidden">
+        {/* Decorative Souls */}
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-600/10 blur-[120px] rounded-full animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-fuchsia-600/10 blur-[120px] rounded-full animate-pulse delay-700"></div>
+        
+        <div className="max-w-xl w-full relative z-10">
+          <div className="text-center mb-10 space-y-4">
+            <div className="w-20 h-20 bg-zinc-900 border-2 border-purple-600 rounded-full flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(168,85,247,0.3)] animate-bounce duration-[3000ms]">
+              <Skull className="text-purple-500" size={36} />
+            </div>
+            <h1 className="title-font text-4xl font-black text-white tracking-tighter uppercase">Devoradores de Alma</h1>
+            
+            <div className="p-6 bg-zinc-950/80 border border-purple-900/30 rounded-2xl animate-in fade-in duration-700">
+              <p className="text-zinc-400 text-sm italic leading-relaxed">
+                {authStep === 1 ? (
+                  `"Saudações, andarilho. Eu sou este site, o grimório digital que guarda as almas de Death City. Para que possamos ressoar, primeiro preciso saber: como devo chamá-lo?"`
+                ) : (
+                  `"Saudações, ${authInputName}. Sua alma parece vibrar em uma frequência conhecida... mas para provar que você não é uma alma errante ou um agente da loucura, qual a frase secreta que o Shinigami lhe confiou?"`
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div className="animate-in slide-in-from-bottom-4 duration-500">
+            {authStep === 1 ? (
+              <form onSubmit={handleNameSubmit} className="space-y-6 max-w-sm mx-auto">
+                <div className="space-y-2">
+                  <label className="text-[10px] text-zinc-600 font-black uppercase tracking-[0.3em] ml-2">Identificação</label>
+                  <input 
+                    type="text" 
+                    placeholder="Seu nome..."
+                    value={authInputName}
+                    onChange={e => setAuthInputName(e.target.value)}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-5 py-4 text-white placeholder:text-zinc-700 outline-none focus:border-purple-600 transition-all shadow-inner text-center"
+                    autoFocus
+                  />
+                </div>
+                
+                {authError && (
+                  <div className="bg-red-950/20 border border-red-900/50 p-4 rounded-xl flex items-center gap-3 animate-in fade-in">
+                    <Skull size={18} className="text-red-500" />
+                    <span className="text-[11px] text-red-400 font-black uppercase tracking-wider">{authError}</span>
+                  </div>
+                )}
+
+                <button 
+                  type="submit"
+                  className="w-full bg-purple-600 hover:bg-purple-500 text-white font-black py-5 rounded-xl text-xs uppercase tracking-[0.4em] transition-all shadow-lg shadow-purple-600/20 active:scale-95 flex items-center justify-center gap-3"
+                >
+                  Continuar <ChevronRight size={18} />
+                </button>
+              </form>
+            ) : (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 gap-3">
+                  {shuffledPhrases.map((phrase, idx) => (
+                    <button 
+                      key={idx}
+                      onClick={() => handlePhraseSubmit(phrase)}
+                      className="group w-full bg-zinc-900/50 hover:bg-purple-900/30 border border-zinc-800 hover:border-purple-500 p-5 rounded-2xl text-left transition-all hover:scale-[1.02] flex items-center gap-4"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-black border border-zinc-800 flex items-center justify-center shrink-0 group-hover:border-purple-500 transition-colors">
+                        <Sparkles size={16} className="text-zinc-700 group-hover:text-purple-400" />
+                      </div>
+                      <span className="text-sm font-bold text-zinc-400 group-hover:text-white transition-colors">{phrase}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <button 
+                  onClick={() => { setAuthStep(1); setAuthError(''); }}
+                  className="w-full py-3 text-[10px] text-zinc-600 hover:text-purple-400 font-black uppercase tracking-[0.3em] transition-all"
+                >
+                  Mudar Identificação
+                </button>
+              </div>
+            )}
+          </div>
+
+          <p className="text-center mt-12 text-zinc-800 text-[10px] font-bold uppercase tracking-widest">
+            Sincronia Estelar v1.2 — Todos os direitos ao Shinigami
+          </p>
+        </div>
+        <style>{`
+          @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+          }
+          .animate-shake { animation: shake 0.3s ease-in-out; }
+        `}</style>
+      </div>
+    );
+  }
+
+  // --- MAIN APP RENDER ---
   return (
     <div className="min-h-screen flex flex-col">
       <DiceAnimationOverlay rollData={currentDiceAnimation} onClose={() => setCurrentDiceAnimation(null)} />
       
-      <button 
-        onClick={() => setShowSettings(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-purple-600 hover:bg-purple-500 text-white rounded-full flex items-center justify-center shadow-2xl z-[200] transition-all hover:scale-110 active:scale-95 border-2 border-purple-400"
-        title="Configurações do Sistema"
-      >
-        <Settings size={28} />
-      </button>
+      {userRole === 'master' && (
+        <button 
+          onClick={() => setShowSettings(true)}
+          className="fixed bottom-6 right-6 w-14 h-14 bg-purple-600 hover:bg-purple-500 text-white rounded-full flex items-center justify-center shadow-2xl z-[200] transition-all hover:scale-110 active:scale-95 border-2 border-purple-400"
+          title="Configurações do Sistema"
+        >
+          <Settings size={28} />
+        </button>
+      )}
 
       <header className="bg-zinc-950/80 backdrop-blur-sm border-b border-purple-900/20 p-4 sticky top-0 z-[100]">
         <div className="container mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
@@ -382,10 +562,19 @@ const App: React.FC = () => {
                 <Skull className="text-purple-500" size={28} />
              </div>
              <div>
-               <h1 className="title-font text-3xl font-black text-zinc-200 tracking-wider leading-none" style={{ textShadow: '0 0 10px rgba(168, 85, 247, 0.5)' }}>
+               <h1 className="title-font text-3xl font-black text-zinc-200 tracking-wider leading-none" style={{ textShadow: '0 0 10px rgba(168,85,247,0.5)' }}>
                  DEVORADORES DE ALMA
                </h1>
-               <span className="text-[10px] text-zinc-600 uppercase font-bold tracking-[0.3em]">Gerenciador de Ressonância</span>
+               <div className="flex items-center gap-2 mt-1">
+                 <span className="text-[10px] text-zinc-600 uppercase font-bold tracking-[0.3em]">Status:</span>
+                 <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter ${userRole === 'master' ? 'bg-yellow-600/20 text-yellow-500 border border-yellow-500/20 shadow-[0_0_10px_rgba(234,179,8,0.2)]' : 'bg-purple-600/20 text-purple-400 border border-purple-500/20'}`}>
+                   {userRole === 'master' ? <ShieldCheck size={10} /> : <UserIcon size={10} />}
+                   {userRole === 'master' ? 'Grão-Mestre' : 'Devorador'}: {userName}
+                 </div>
+                 <button onClick={handleLogout} className="text-zinc-700 hover:text-red-500 p-1 transition-colors" title="Romper Sincronia">
+                    <LogOut size={12}/>
+                 </button>
+               </div>
              </div>
           </div>
           <nav className="flex bg-black/40 p-1.5 rounded-full border border-purple-900/10 shadow-inner">
@@ -420,10 +609,12 @@ const App: React.FC = () => {
         {activeTab === 'fichas' && (
           <div className="flex flex-col lg:flex-row gap-8">
             <div className="w-full lg:w-80 space-y-6 shrink-0">
-              <div className="space-y-2">
-                <button onClick={() => addCharacter(false)} className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg shadow-purple-600/20 active:scale-95"><Plus size={16}/> NOVO DEVORADOR</button>
-                <button onClick={() => addCharacter(true)} className="w-full bg-zinc-900/50 text-zinc-400 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-zinc-800/50 transition-all border border-zinc-800 active:scale-95"><Plus size={16}/> CRIAR NPC</button>
-              </div>
+              {userRole === 'master' && (
+                <div className="space-y-2">
+                  <button onClick={() => addCharacter(false)} className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg shadow-purple-600/20 active:scale-95"><Plus size={16}/> NOVO DEVORADOR</button>
+                  <button onClick={() => addCharacter(true)} className="w-full bg-zinc-900/50 text-zinc-400 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-zinc-800/50 transition-all border border-zinc-800 active:scale-95"><Plus size={16}/> CRIAR NPC</button>
+                </div>
+              )}
               <div className="space-y-2 max-h-[65vh] overflow-y-auto pr-2 custom-scrollbar">
                 {characters.filter(c => !characters.some(p => p.companionId === c.id || p.companionId2 === c.id)).map(c => (
                   <div key={c.id} className={`relative p-3 rounded-xl cursor-pointer transition-all duration-300 border-2 ${selectedCharId === c.id ? 'bg-purple-950/30 border-purple-600/80 soul-glow' : 'bg-zinc-950/50 border-zinc-900 hover:border-purple-900/50'}`} onClick={() => setSelectedCharId(c.id)}>
@@ -439,7 +630,9 @@ const App: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                      <button onClick={(e) => { e.stopPropagation(); removeCharacter(c.id); }} className="text-zinc-800 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
+                      {userRole === 'master' && (
+                        <button onClick={(e) => { e.stopPropagation(); removeCharacter(c.id); }} className="text-zinc-800 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -477,7 +670,12 @@ const App: React.FC = () => {
             <div className="lg:col-span-3">
               {toolsSubTab === 'diary' && (
                 <div className="bg-black border border-purple-900/10 rounded-2xl flex flex-col h-[85vh] shadow-2xl animate-in fade-in duration-500">
-                  <div className="p-5 border-b border-purple-900/10 bg-zinc-950 flex justify-between items-center"><span className="text-[12px] font-black text-zinc-500 uppercase tracking-widest">Log de Rolagens</span><button onClick={() => setLogs([])} className="text-[12px] text-zinc-700 hover:text-red-500 font-black uppercase tracking-widest transition-colors">Purgar</button></div>
+                  <div className="p-5 border-b border-purple-900/10 bg-zinc-950 flex justify-between items-center">
+                    <span className="text-[12px] font-black text-zinc-500 uppercase tracking-widest">Log de Rolagens</span>
+                    {userRole === 'master' && (
+                      <button onClick={() => setLogs([])} className="text-[12px] text-zinc-700 hover:text-red-500 font-black uppercase tracking-widest transition-colors">Purgar</button>
+                    )}
+                  </div>
                   <div className="flex-1 overflow-y-auto p-6 space-y-3 font-mono text-sm custom-scrollbar">
                     {logs.map(log => (<div key={log.id} className="flex gap-6 text-zinc-600 border-b border-zinc-900/50 pb-2"><span className="text-zinc-800">[{new Date(log.timestamp).toLocaleTimeString()}]</span><span className={`whitespace-pre-wrap ${log.type === 'dice' ? 'text-purple-400 font-bold' : log.type === 'ai' ? 'text-blue-400' : ''}`}>{log.text}</span></div>))}
                   </div>
@@ -493,7 +691,7 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {showSettings && (
+      {showSettings && userRole === 'master' && (
         <div className="fixed inset-0 z-[300] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-[#0c0a0e] border border-purple-600/30 rounded-3xl w-full max-w-xl overflow-hidden shadow-[0_0_50px_rgba(168,85,247,0.2)]">
             <div className="p-8 border-b border-zinc-900 flex justify-between items-center">
