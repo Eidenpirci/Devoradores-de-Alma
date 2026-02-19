@@ -348,7 +348,7 @@ export const CharacterSheet: React.FC<Props> = ({ char, updateChar, isCompanion,
           </div>
         </div>
         <div className="flex gap-4">
-           {[ { label: 'HP', val: maxHp, col: 'text-red-500' }, { label: 'AL', val: maxAl, col: 'text-blue-500' }, { label: 'ST', val: maxSt, col: 'text-yellow-500' } ].map(s => (
+           {[ { label: 'HP', val: char.hp, col: 'text-red-500' }, { label: 'AL', val: char.al, col: 'text-blue-500' }, { label: 'ST', val: char.st, col: 'text-yellow-500' } ].map(s => (
              <div key={s.label} className="bg-black/40 px-3 py-1 rounded border border-zinc-800 text-center min-w-[60px]">
                <span className={`text-[10px] font-black uppercase block ${s.col}`}>{s.label}</span>
                <span className="text-base font-black text-white">{s.val}</span>
@@ -627,11 +627,20 @@ export const CharacterSheet: React.FC<Props> = ({ char, updateChar, isCompanion,
             <div>
               <SectionTitle title="STATUS DE ALMA" icon={Heart} />
               <div className="grid grid-cols-3 gap-3">
-                {[ { label: 'HP', sub: 'VIDA', max: maxHp, col: 'text-red-500', bg: 'bg-red-950/20' }, { label: 'AL', sub: 'ALMA', max: maxAl, col: 'text-blue-500', bg: 'bg-blue-950/20' }, { label: 'ST', sub: 'STAMINA', max: maxSt, col: 'text-yellow-500', bg: 'bg-yellow-950/20' } ].map(s => (
-                  <div key={s.label} className={`${s.bg} p-4 rounded-xl border border-purple-900/10 flex flex-col items-center justify-center text-center shadow-inner`}>
+                {[ 
+                  { label: 'HP', sub: 'VIDA', field: 'hp', max: maxHp, col: 'text-red-500', bg: 'bg-red-950/20' }, 
+                  { label: 'AL', sub: 'ALMA', field: 'al', max: maxAl, col: 'text-blue-500', bg: 'bg-blue-950/20' }, 
+                  { label: 'ST', sub: 'STAMINA', field: 'st', max: maxSt, col: 'text-yellow-500', bg: 'bg-yellow-950/20' } 
+                ].map(s => (
+                  <div key={s.label} className={`${s.bg} p-4 rounded-xl border border-purple-900/10 flex flex-col items-center justify-center text-center shadow-inner group/stat`}>
                      <span className={`text-[12px] font-black ${s.col} uppercase tracking-widest mb-1`}>{s.label}</span>
-                     <span className="text-3xl font-black text-white">{s.max}</span>
-                     <span className="text-[10px] text-zinc-500 font-bold uppercase mt-1">{s.sub}</span>
+                     <input 
+                       type="number"
+                       className="w-full bg-transparent text-3xl font-black text-white text-center outline-none focus:text-purple-400 transition-colors cursor-pointer"
+                       value={(char as any)[s.field]}
+                       onChange={e => handleFieldChange(s.field as any, parseInt(e.target.value) || 0)}
+                     />
+                     <span className="text-[10px] text-zinc-500 font-bold uppercase mt-1">{s.sub} (MÁX: {s.max})</span>
                   </div>
                 ))}
               </div>
@@ -644,9 +653,11 @@ export const CharacterSheet: React.FC<Props> = ({ char, updateChar, isCompanion,
                      </div>
                      <span className="text-2xl font-black text-purple-500 drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]">{char.insanidade}</span>
                   </div>
-                  <div className="relative h-3 w-full bg-zinc-900 rounded-full overflow-hidden border border-zinc-800 p-[1px]">
-                    <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-purple-900 via-purple-600 to-red-500 shadow-[0_0_15px_rgba(168,85,247,0.5)] transition-all duration-300" style={{ width: `${char.insanidade}%` }}></div>
-                    <input type="range" className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer z-10" value={char.insanidade} onChange={e => handleFieldChange('insanidade', parseInt(e.target.value))} />
+                  <div className="relative h-3 w-full bg-zinc-900 rounded-full border border-zinc-800 p-[1px]">
+                    <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-purple-900 via-purple-600 to-red-500 shadow-[0_0_15px_rgba(168,85,247,0.5)] transition-all duration-300 rounded-full" style={{ width: `${char.insanidade}%` }}>
+                      <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-4 h-4 bg-white rounded-full border-2 border-purple-600 shadow-[0_0_10px_rgba(255,255,255,1)] z-20 soul-glow" />
+                    </div>
+                    <input type="range" className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer z-30" value={char.insanidade} onChange={e => handleFieldChange('insanidade', parseInt(e.target.value))} />
                   </div>
                 </div>
                 <div className="relative group">
@@ -657,9 +668,11 @@ export const CharacterSheet: React.FC<Props> = ({ char, updateChar, isCompanion,
                      </div>
                      <span className="text-2xl font-black text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.4)]">{char.coragem}</span>
                   </div>
-                  <div className="relative h-3 w-full bg-zinc-900 rounded-full overflow-hidden border border-zinc-800 p-[1px]">
-                    <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-900 via-blue-500 to-cyan-400 shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all duration-300" style={{ width: `${char.coragem}%` }}></div>
-                    <input type="range" className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer z-10" value={char.coragem} onChange={e => handleFieldChange('coragem', parseInt(e.target.value))} />
+                  <div className="relative h-3 w-full bg-zinc-900 rounded-full border border-zinc-800 p-[1px]">
+                    <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-900 via-blue-500 to-cyan-400 shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all duration-300 rounded-full" style={{ width: `${char.coragem}%` }}>
+                      <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-4 h-4 bg-white rounded-full border-2 border-blue-600 shadow-[0_0_10px_rgba(255,255,255,1)] z-20 soul-glow" />
+                    </div>
+                    <input type="range" className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer z-30" value={char.coragem} onChange={e => handleFieldChange('coragem', parseInt(e.target.value))} />
                   </div>
                 </div>
               </div>
