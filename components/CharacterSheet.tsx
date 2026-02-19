@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Character, Race, Attributes, Role, ArmorItem, SoulAlignment } from '../types';
 import { RACE_DATA, SKILLS_GROUPS, LEVELING_TABLE, VANTAGES_DATA, VantageDef, MASTERY_SKILLS_DATA, MASTERY_XP_COSTS } from '../constants';
@@ -79,6 +80,22 @@ const ArmorSlotCard: React.FC<ArmorSlotCardProps> = ({ slot, label, item, expand
     </div>
   );
 };
+
+const SectionTitle = ({ title, icon: Icon, action }: { title: string, icon?: any, action?: React.ReactNode }) => (
+  <div className="flex items-center justify-between border-b border-purple-900/30 pb-2 mb-4">
+    <div className="flex items-center gap-2">
+      {Icon && <Icon size={14} className="text-purple-500" />}
+      <span className="text-zinc-400 text-[12px] tracking-[0.2em] font-bold uppercase">{title}</span>
+    </div>
+    {action}
+  </div>
+);
+
+const Card = ({ children, className }: { children?: React.ReactNode, className?: string }) => (
+  <div className={`bg-zinc-950/50 p-6 rounded-2xl border border-zinc-900 ${className}`}>
+    {children}
+  </div>
+);
 
 interface Props {
   char: Character;
@@ -281,16 +298,6 @@ export const CharacterSheet: React.FC<Props> = ({ char, updateChar, isCompanion,
     }
   };
 
-  const SectionTitle = ({ title, icon: Icon, action }: { title: string, icon?: any, action?: React.ReactNode }) => (
-    <div className="flex items-center justify-between border-b border-purple-900/30 pb-2 mb-4">
-      <div className="flex items-center gap-2">
-        {Icon && <Icon size={14} className="text-purple-500" />}
-        <span className="text-zinc-400 text-[12px] tracking-[0.2em] font-bold uppercase">{title}</span>
-      </div>
-      {action}
-    </div>
-  );
-
   const totalArmorFisicaValue = useMemo(() => {
     let sum = char.armaduraFisica + vantageBonuses.armorFisica;
     if (char.armaduras.cabeca.equipado) sum += char.armaduras.cabeca.fisica;
@@ -330,12 +337,6 @@ export const CharacterSheet: React.FC<Props> = ({ char, updateChar, isCompanion,
     handleFieldChange('masterySkills', current);
   };
 
-  const Card = ({ children, className }: { children?: React.ReactNode, className?: string }) => (
-    <div className={`bg-zinc-950/50 p-6 rounded-2xl border border-zinc-900 ${className}`}>
-      {children}
-    </div>
-  );
-
   if (isCompanion && !isExpanded) {
     return (
       <div className="bg-[#0f0f12] border border-purple-900/30 rounded-xl p-4 flex items-center justify-between shadow-xl">
@@ -365,9 +366,9 @@ export const CharacterSheet: React.FC<Props> = ({ char, updateChar, isCompanion,
         <button onClick={() => setIsExpanded(false)} className="absolute top-6 right-8 bg-zinc-900 hover:bg-zinc-800 p-2 rounded-full text-zinc-500" title="Recolher Ficha"><ChevronUp size={20} /></button>
       )}
 
-      {/* HEADER: NIVEL E XP - REORGANIZADO PARA PREENCHER ESPAÇOS VAZIOS */}
+      {/* HEADER: NIVEL E XP */}
       <div className="flex flex-col md:flex-row items-stretch gap-6 mb-4">
-        {/* IMAGEM (VERDE) */}
+        {/* IMAGEM */}
         <div className="relative group w-32 h-32 md:w-36 md:h-36 shrink-0">
           <input type="file" ref={imageInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
           {char.imageUrl ? (
@@ -385,12 +386,17 @@ export const CharacterSheet: React.FC<Props> = ({ char, updateChar, isCompanion,
           </div>
         </div>
 
-        {/* CONTAINER DE INFO E XP (VERDE / PREENCHENDO VERMELHO) */}
+        {/* CONTAINER DE INFO E XP */}
         <div className="flex-1 flex flex-col md:flex-row gap-4 items-center md:items-stretch">
-          {/* BLOCO NOME/TITULO (VERDE) */}
           <div className="flex-1 bg-zinc-950/40 p-4 rounded-2xl border border-zinc-900 flex flex-col justify-center min-w-0">
             <div className="flex items-center gap-3 mb-2">
-              <h2 className="title-font text-3xl md:text-4xl text-purple-600 tracking-tighter leading-tight uppercase truncate">{char.nome || (isCompanion ? 'ARMA DEMONÍACA' : 'ALMA DEVORADORA')}</h2>
+              <input 
+                type="text" 
+                className="title-font text-3xl md:text-4xl text-purple-600 tracking-tighter leading-tight uppercase truncate bg-transparent border-none outline-none w-full"
+                value={char.nome || ''}
+                placeholder={isCompanion ? 'ARMA DEMONÍACA' : 'ALMA DEVORADORA'}
+                onChange={e => handleFieldChange('nome', e.target.value)}
+              />
               {isCompanion && <div className="bg-purple-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-tighter shrink-0"><LinkIcon size={10}/> Sincronizado</div>}
             </div>
             <div className="flex items-center gap-3">
@@ -400,11 +406,16 @@ export const CharacterSheet: React.FC<Props> = ({ char, updateChar, isCompanion,
                    {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n} className="bg-zinc-950">0{n}</option>)}
                  </select>
               </div>
-              <span className="text-zinc-600 text-[12px] font-bold uppercase tracking-widest truncate">{char.titulo}</span>
+              <input 
+                type="text"
+                className="text-zinc-600 text-[12px] font-bold uppercase tracking-widest truncate bg-transparent border-none outline-none"
+                value={char.titulo || ''}
+                placeholder="Título da Alma"
+                onChange={e => handleFieldChange('titulo', e.target.value)}
+              />
             </div>
           </div>
           
-          {/* BLOCO XP (VERDE / NO ESPAÇO VERMELHO SUPERIOR DIREITO) */}
           {!isCompanion && (
             <div className="w-full md:w-auto bg-zinc-950/40 p-4 rounded-2xl border border-zinc-900 flex flex-col justify-between gap-3">
               <div className="flex items-center gap-4 px-2">
@@ -435,7 +446,7 @@ export const CharacterSheet: React.FC<Props> = ({ char, updateChar, isCompanion,
         </div>
       </div>
 
-      {/* LINHA DE RESUMO DE PONTOS (ALINHADA PARA ELIMINAR O GAP VERMELHO HORIZONTAL) */}
+      {/* LINHA DE RESUMO DE PONTOS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
           <div className="bg-purple-950/20 p-3 rounded-xl border border-purple-900/30 flex justify-between items-center h-16">
              <div className="flex flex-col"><span className="text-[10px] text-purple-400 uppercase font-black tracking-widest">Atributos</span><span className="text-xs font-bold text-zinc-400">Gasto: {spentPoints.attr} / {levelLimits.attrPool}</span></div>
