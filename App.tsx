@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { 
-  BookOpen, 
-  Settings, 
   Users, 
   Dice6, 
   Plus, 
@@ -9,64 +8,28 @@ import {
   Moon,
   Sparkles,
   Sword,
-  Shield,
-  Zap,
-  Brain,
-  Heart,
-  Eye,
-  Star,
-  Activity,
-  Skull,
-  Crosshair,
-  Wrench,
-  MessageSquare,
-  TrendingUp,
-  Target,
-  Flame,
-  Ghost,
-  Info,
-  Clock,
-  ZapOff,
-  AlertTriangle,
-  Move,
-  RotateCcw,
-  Wind,
-  Droplets,
-  Thermometer,
-  ShieldAlert,
-  Dna,
-  FlaskConical,
-  BookMarked,
-  Timer,
-  Calendar,
-  Layers,
-  GraduationCap,
-  Scale,
-  Hand,
-  Hash,
-  ChevronDown,
-  Hammer,
+  Swords,
   Map as MapIcon,
   Calendar as CalendarIcon,
   ClipboardList,
-  Swords,
-  Coins,
-  Gem,
-  Book as BookIcon,
-  UserPlus,
-  HeartPulse,
   Save,
-  Download
+  Download,
+  FileUp,
+  Settings,
+  Skull,
+  X,
+  RefreshCw,
+  Info
 } from 'lucide-react';
 import { Character, Race, Role, LogEntry, ArmorItem, SoulAlignment, CombatState, MapState, RollData, Roll, SavedBattle } from './types';
-import { INITIAL_ATTRIBUTES, LORE_DATA, LEVELING_TABLE } from './constants';
+import { INITIAL_ATTRIBUTES, RACE_DATA } from './constants';
 import { CharacterSheet } from './components/CharacterSheet';
 import { DiceRoller } from './components/DiceRoller';
 import { InteractiveMap } from './components/InteractiveMap';
 import { CalendarTool } from './components/CalendarTool';
 import { CombatMonitor } from './components/CombatMonitor';
 import { DiceAnimationOverlay } from './components/DiceAnimationOverlay';
-import { generateAdventureHook, generateNPC, explainRule } from './services/geminiService';
+import { explainRule } from './services/geminiService';
 
 const createEmptyArmor = (): ArmorItem => ({
   equipado: false,
@@ -132,7 +95,7 @@ const fixedScenarios = [
   { id: 'map-5', name: 'FLORESTA DAS ALMAS', icon: 'TreePine', color: '#22c55e' },
   { id: 'map-6', name: 'PÂNTANO DA LOUCURA', icon: 'Ghost', color: '#3b82f6' },
   { id: 'map-7', name: 'CASTELO DA BRUXA', icon: 'Sparkles', color: '#ec4899' },
-  { id: 'map-8', 'name': 'CAVERNA DO KISHIN', 'icon': 'Skull', 'color': '#f4f4f5' },
+  { id: 'map-8', name: 'CAVERNA DO KISHIN', icon: 'Skull', color: '#f4f4f5' },
   { id: 'map-9', name: 'VILAREJO ABANDONADO', icon: 'Home', color: '#6b7280' },
 ];
 
@@ -162,11 +125,11 @@ fixedScenarios.forEach(scenario => {
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'fichas' | 'map' | 'calendar' | 'tools'>('fichas');
+  const [showSettings, setShowSettings] = useState(false);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(false);
-  const [aiResponse, setAiResponse] = useState<string | null>(null);
   
   const [calendarNotes, setCalendarNotes] = useState<Record<string, string>>({});
   const [calendarEvents, setCalendarEvents] = useState<Record<string, string[]>>({});
@@ -185,40 +148,49 @@ const App: React.FC = () => {
   const [diceAnimationQueue, setDiceAnimationQueue] = useState<RollData[]>([]);
   const [currentDiceAnimation, setCurrentDiceAnimation] = useState<RollData | null>(null);
 
+  const importFileRef = useRef<HTMLInputElement>(null);
+
+  // Carregamento Inicial do LocalStorage
   useEffect(() => {
-    const savedChars = localStorage.getItem('soulEaterChars');
-    if (savedChars) setCharacters(JSON.parse(savedChars));
+    const loadSavedData = () => {
+      try {
+        const savedChars = localStorage.getItem('soulEaterChars');
+        if (savedChars) setCharacters(JSON.parse(savedChars));
 
-    const savedCalendar = localStorage.getItem('soulEaterCalendar');
-    if (savedCalendar) {
-      const parsed = JSON.parse(savedCalendar);
-      setCalendarNotes(parsed.notes || {});
-      setCalendarEvents(parsed.events || {});
-      setPlayerDates(parsed.playerDates || {});
-      setCurrentCampaignDate(parsed.currentCampaignDate || null);
-    }
+        const savedCalendar = localStorage.getItem('soulEaterCalendar');
+        if (savedCalendar) {
+          const parsed = JSON.parse(savedCalendar);
+          setCalendarNotes(parsed.notes || {});
+          setCalendarEvents(parsed.events || {});
+          setPlayerDates(parsed.playerDates || {});
+          setCurrentCampaignDate(parsed.currentCampaignDate || null);
+        }
 
-    const savedCombat = localStorage.getItem('soulEaterActiveCombat');
-    if (savedCombat) setCombatState(JSON.parse(savedCombat));
+        const savedCombat = localStorage.getItem('soulEaterActiveCombat');
+        if (savedCombat) setCombatState(JSON.parse(savedCombat));
 
-    const savedBattlesData = localStorage.getItem('soulEaterSavedBattles');
-    if (savedBattlesData) setSavedBattles(JSON.parse(savedBattlesData));
+        const savedBattlesData = localStorage.getItem('soulEaterSavedBattles');
+        if (savedBattlesData) setSavedBattles(JSON.parse(savedBattlesData));
 
-    const savedMap = localStorage.getItem('soulEaterActiveMap');
-    if (savedMap) {
-      const parsed = JSON.parse(savedMap);
-      if (parsed.gridWidth !== 60 || parsed.gridHeight !== 34) {
-        setMapState({ ...initialMapState, ...parsed, gridWidth: 60, gridHeight: 34 });
-      } else {
-        setMapState({ ...initialMapState, ...parsed });
+        const savedMap = localStorage.getItem('soulEaterActiveMap');
+        if (savedMap) setMapState(JSON.parse(savedMap));
+
+        const savedLogs = localStorage.getItem('soulEaterLogs');
+        if (savedLogs) setLogs(JSON.parse(savedLogs));
+
+      } catch (err) {
+        console.error("Erro ao carregar dados locais:", err);
       }
-    }
+    };
+    loadSavedData();
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('soulEaterChars', JSON.stringify(characters));
-  }, [characters]);
-
+  // Auto-Save robusto
+  useEffect(() => { localStorage.setItem('soulEaterChars', JSON.stringify(characters)); }, [characters]);
+  useEffect(() => { localStorage.setItem('soulEaterLogs', JSON.stringify(logs)); }, [logs]);
+  useEffect(() => { localStorage.setItem('soulEaterActiveCombat', JSON.stringify(combatState)); }, [combatState]);
+  useEffect(() => { localStorage.setItem('soulEaterSavedBattles', JSON.stringify(savedBattles)); }, [savedBattles]);
+  useEffect(() => { localStorage.setItem('soulEaterActiveMap', JSON.stringify(mapState)); }, [mapState]);
   useEffect(() => {
     localStorage.setItem('soulEaterCalendar', JSON.stringify({
       notes: calendarNotes,
@@ -228,17 +200,66 @@ const App: React.FC = () => {
     }));
   }, [calendarNotes, calendarEvents, playerDates, currentCampaignDate]);
 
-  useEffect(() => {
-    localStorage.setItem('soulEaterActiveCombat', JSON.stringify(combatState));
-  }, [combatState]);
-  
-  useEffect(() => {
-    localStorage.setItem('soulEaterSavedBattles', JSON.stringify(savedBattles));
-  }, [savedBattles]);
+  // Funções de Exportação e Importação
+  const handleExportJSON = () => {
+    const fullSave = {
+      characters,
+      logs,
+      calendar: {
+        notes: calendarNotes,
+        events: calendarEvents,
+        playerDates: playerDates,
+        currentCampaignDate
+      },
+      combat: combatState,
+      savedBattles,
+      map: mapState,
+      version: "1.0",
+      timestamp: Date.now()
+    };
 
-  useEffect(() => {
-    localStorage.setItem('soulEaterActiveMap', JSON.stringify(mapState));
-  }, [mapState]);
+    const blob = new Blob([JSON.stringify(fullSave, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `save_devoradores_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    addLog('Dados exportados com sucesso!', 'system');
+  };
+
+  const handleImportJSON = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        
+        // Atualiza todos os estados baseados no arquivo
+        if (data.characters) setCharacters(data.characters);
+        if (data.logs) setLogs(data.logs);
+        if (data.calendar) {
+          setCalendarNotes(data.calendar.notes || {});
+          setCalendarEvents(data.calendar.events || {});
+          setPlayerDates(data.calendar.playerDates || {});
+          setCurrentCampaignDate(data.calendar.currentCampaignDate || null);
+        }
+        if (data.combat) setCombatState(data.combat);
+        if (data.savedBattles) setSavedBattles(data.savedBattles);
+        if (data.map) setMapState(data.map);
+
+        addLog('Dados importados com sucesso!', 'system');
+        setShowSettings(false);
+        alert('Dados carregados com sucesso!');
+      } catch (err) {
+        console.error("Erro ao importar JSON:", err);
+        alert('Erro ao processar o arquivo. Verifique se o formato está correto.');
+      }
+    };
+    reader.readAsText(file);
+  };
 
   const addCharacter = (isNPC = false) => {
     const id = Date.now().toString();
@@ -283,7 +304,7 @@ const App: React.FC = () => {
 
   const addLog = (text: string, type: LogEntry['type']) => {
     const newLog: LogEntry = { id: Date.now().toString(), timestamp: Date.now(), text, type };
-    setLogs([newLog, ...logs].slice(0, 50));
+    setLogs(prev => [newLog, ...prev].slice(0, 50));
   };
 
   const showRoll = (description: string, rolls: Roll[], modifier: number, total: number) => {
@@ -293,9 +314,7 @@ const App: React.FC = () => {
     if (hasSources) {
       const groupedBySource = rolls.reduce((acc, roll) => {
           const key = roll.source || 'Outros';
-          if (!acc[key]) {
-              acc[key] = { rolls: [], total: 0 };
-          }
+          if (!acc[key]) acc[key] = { rolls: [], total: 0 };
           acc[key].rolls.push(roll);
           acc[key].total += roll.value;
           return acc;
@@ -306,9 +325,7 @@ const App: React.FC = () => {
           const rollsString = data.rolls.map(r => r.value).join(', ');
           detailedLog += `- ${source}: [${rollsString}] = ${data.total}\n`;
       });
-      if (modifier !== 0) {
-          detailedLog += `Modificador: ${modifier > 0 ? '+' : ''}${modifier}\n`;
-      }
+      if (modifier !== 0) detailedLog += `Modificador: ${modifier > 0 ? '+' : ''}${modifier}\n`;
       detailedLog += `Total Final: ${total}`;
       logText = detailedLog;
     } else {
@@ -341,36 +358,13 @@ const App: React.FC = () => {
     }
   }, [currentDiceAnimation, diceAnimationQueue]);
 
-  const handleAiAction = async (action: () => Promise<string | null>) => {
-    setLoading(true);
-    setAiResponse(null);
-    try {
-      const result = await action();
-      setAiResponse(result);
-      addLog('Oráculo de Alma emitiu uma resposta', 'ai');
-    } catch (err) {
-      addLog('Erro na conexão com o Shinigami', 'system');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSaveBattle = (name: string, state: CombatState) => {
-    const newSave: SavedBattle = {
-      id: Date.now(),
-      name,
-      state: JSON.parse(JSON.stringify(state))
-    };
+    const newSave: SavedBattle = { id: Date.now(), name, state: JSON.parse(JSON.stringify(state)) };
     setSavedBattles(prev => [...prev, newSave]);
   };
   
-  const handleLoadBattle = (state: CombatState) => {
-    setCombatState(JSON.parse(JSON.stringify(state)));
-  };
-  
-  const handleDeleteBattle = (id: number) => {
-    setSavedBattles(prev => prev.filter(b => b.id !== id));
-  };
+  const handleLoadBattle = (state: CombatState) => { setCombatState(JSON.parse(JSON.stringify(state))); };
+  const handleDeleteBattle = (id: number) => { setSavedBattles(prev => prev.filter(b => b.id !== id)); };
   
   const selectedChar = characters.find(c => c.id === selectedCharId);
   const companionChar1 = selectedChar?.companionId ? characters.find(c => c.id === selectedChar.companionId) : null;
@@ -379,12 +373,21 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <DiceAnimationOverlay rollData={currentDiceAnimation} onClose={() => setCurrentDiceAnimation(null)} />
+      
+      {/* Botão de Sistema Flutuante */}
+      <button 
+        onClick={() => setShowSettings(true)}
+        className="fixed bottom-6 right-6 w-14 h-14 bg-purple-600 hover:bg-purple-500 text-white rounded-full flex items-center justify-center shadow-2xl z-[200] transition-all hover:scale-110 active:scale-95 border-2 border-purple-400"
+        title="Configurações do Sistema"
+      >
+        <Settings size={28} />
+      </button>
+
       <header className="bg-zinc-950/80 backdrop-blur-sm border-b border-purple-900/20 p-4 sticky top-0 z-[100]">
         <div className="container mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-4">
              <div className="w-14 h-14 bg-zinc-900 border-2 border-purple-900/50 rounded-full flex items-center justify-center relative soul-glow shadow-lg shadow-purple-900/20">
                 <Skull className="text-purple-500" size={28} />
-                <div className="absolute inset-0 rounded-full border-2 border-zinc-950 scale-110 opacity-30"></div>
              </div>
              <div>
                <h1 className="title-font text-3xl font-black text-zinc-200 tracking-wider leading-none" style={{ textShadow: '0 0 10px rgba(168, 85, 247, 0.5)' }}>
@@ -435,19 +438,16 @@ const App: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${c.isNPC ? 'bg-zinc-800 text-zinc-500' : 'bg-purple-900/50 text-purple-400'}`}>
-                          {c.isNPC ? <Ghost size={20}/> : <Users size={20}/>}
+                          {c.isNPC ? <Moon size={20}/> : <Users size={20}/>}
                         </div>
                         <div className="flex flex-col">
                           <span className={`text-sm font-black uppercase tracking-wider ${c.isNPC ? 'text-zinc-400' : 'text-zinc-100'}`}>{c.nome}</span>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className={`flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded ${c.isNPC ? 'bg-zinc-800 text-zinc-500' : 'bg-purple-950 text-purple-400'}`}>
-                              {c.isNPC ? 'NPC' : 'PLAYER'}
-                            </span>
                             <span className="text-[9px] font-bold text-zinc-600 bg-zinc-900 px-1.5 py-0.5 rounded">NV. {c.nivel}</span>
                           </div>
                         </div>
                       </div>
-                      <button onClick={(e) => { e.stopPropagation(); removeCharacter(c.id); }} className="absolute top-2 right-2 text-zinc-800 hover:text-red-500 transition-colors self-start"><Trash2 size={14} /></button>
+                      <button onClick={(e) => { e.stopPropagation(); removeCharacter(c.id); }} className="text-zinc-800 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
                     </div>
                   </div>
                 ))}
@@ -456,43 +456,12 @@ const App: React.FC = () => {
             <div className="flex-1 space-y-12">
               {selectedChar ? (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <CharacterSheet 
-                    char={selectedChar} 
-                    updateChar={updateCharacter} 
-                    onToggleCompanion={(slot) => toggleCompanion(selectedCharId!, slot)} 
-                    companions={[companionChar1, companionChar2].filter(Boolean) as Character[]}
-                  />
-                  
-                  {companionChar1 && (
-                    <div className="mt-12 pt-8 border-t-2 border-purple-900/10">
-                       <h3 className="title-font text-xl text-center text-purple-600 mb-8 uppercase tracking-[0.3em] flex items-center justify-center gap-2">
-                         <Sword size={24}/> RESSONÂNCIA DE ARMA (PRIMÁRIA)
-                       </h3>
-                       <CharacterSheet 
-                        char={companionChar1} 
-                        updateChar={updateCharacter} 
-                        isCompanion 
-                        parentChar={selectedChar}
-                       />
-                    </div>
-                  )}
-
-                  {companionChar2 && (
-                    <div className="mt-12 pt-8 border-t-2 border-blue-900/10">
-                       <h3 className="title-font text-xl text-center text-blue-600 mb-8 uppercase tracking-[0.3em] flex items-center justify-center gap-2">
-                         <Sword size={24}/> RESSONÂNCIA DE ARMA (SECUNDÁRIA)
-                       </h3>
-                       <CharacterSheet 
-                        char={companionChar2} 
-                        updateChar={updateCharacter} 
-                        isCompanion 
-                        parentChar={selectedChar}
-                       />
-                    </div>
-                  )}
+                  <CharacterSheet char={selectedChar} updateChar={updateCharacter} onToggleCompanion={(slot) => toggleCompanion(selectedCharId!, slot)} companions={[companionChar1, companionChar2].filter(Boolean) as Character[]} />
+                  {companionChar1 && <div className="mt-12 pt-8 border-t-2 border-purple-900/10"><CharacterSheet char={companionChar1} updateChar={updateCharacter} isCompanion parentChar={selectedChar} /></div>}
+                  {companionChar2 && <div className="mt-12 pt-8 border-t-2 border-blue-900/10"><CharacterSheet char={companionChar2} updateChar={updateCharacter} isCompanion parentChar={selectedChar} /></div>}
                 </div>
               ) : (
-                <div className="h-96 flex items-center justify-center border-2 border-dashed border-zinc-900 rounded-2xl text-zinc-800 title-font text-2xl uppercase tracking-widest">Selecione uma alma para ressoar</div>
+                <div className="h-96 flex items-center justify-center border-2 border-dashed border-zinc-900 rounded-2xl text-zinc-800 title-font text-2xl uppercase tracking-widest">Selecione uma alma</div>
               )}
             </div>
           </div>
@@ -500,17 +469,7 @@ const App: React.FC = () => {
 
         {activeTab === 'calendar' && (
           <div className="animate-in fade-in zoom-in-95 duration-500 h-[85vh]">
-            <CalendarTool 
-              characters={characters} 
-              notes={calendarNotes} 
-              events={calendarEvents} 
-              playerDates={playerDates} 
-              onUpdateNotes={(date, val) => setCalendarNotes(prev => ({...prev, [date]: val}))} 
-              onUpdateEvents={(date, val) => setCalendarEvents(prev => ({...prev, [date]: val}))} 
-              onUpdatePlayerDate={(charId, date) => setPlayerDates(prev => ({...prev, [charId]: date}))}
-              currentCampaignDate={currentCampaignDate}
-              onSetCurrentCampaignDate={setCurrentCampaignDate}
-            />
+            <CalendarTool characters={characters} notes={calendarNotes} events={calendarEvents} playerDates={playerDates} onUpdateNotes={(date, val) => setCalendarNotes(prev => ({...prev, [date]: val}))} onUpdateEvents={(date, val) => setCalendarEvents(prev => ({...prev, [date]: val}))} onUpdatePlayerDate={(charId, date) => setPlayerDates(prev => ({...prev, [charId]: date}))} currentCampaignDate={currentCampaignDate} onSetCurrentCampaignDate={setCurrentCampaignDate} />
           </div>
         )}
         
@@ -518,13 +477,13 @@ const App: React.FC = () => {
           <div className="grid lg:grid-cols-4 gap-10">
             <div className="lg:col-span-1 space-y-8">
               <div className="bg-zinc-950 p-2 rounded-xl border border-purple-900/10 flex flex-col gap-2">
-                <button onClick={() => setToolsSubTab('combat')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${toolsSubTab === 'combat' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20' : 'text-zinc-600 hover:text-purple-400'}`}><Swords size={18}/><span className="text-[10px] font-black uppercase tracking-widest">Monitor de Combate</span></button>
-                <button onClick={() => setToolsSubTab('diary')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${toolsSubTab === 'diary' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20' : 'text-zinc-600 hover:text-purple-400'}`}><ClipboardList size={18}/><span className="text-[10px] font-black uppercase tracking-widest">Log de Rolagens</span></button>
+                <button onClick={() => setToolsSubTab('combat')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${toolsSubTab === 'combat' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20' : 'text-zinc-600 hover:text-purple-400'}`}><Swords size={18}/><span className="text-[10px] font-black uppercase tracking-widest">Combate</span></button>
+                <button onClick={() => setToolsSubTab('diary')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${toolsSubTab === 'diary' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20' : 'text-zinc-600 hover:text-purple-400'}`}><ClipboardList size={18}/><span className="text-[10px] font-black uppercase tracking-widest">Log</span></button>
               </div>
               <DiceRoller onRoll={showRoll} />
               <div className="bg-zinc-950 p-8 rounded-xl border border-purple-900/10">
                 <h4 className="text-[12px] font-black text-zinc-500 uppercase mb-6 tracking-widest">Consultar Grimório</h4>
-                <input placeholder="Dúvida sobre regras..." className="w-full bg-black p-4 text-base border border-zinc-900 rounded-lg focus:border-purple-600 outline-none transition-all" onKeyDown={e => { if(e.key === 'Enter') { handleAiAction(() => explainRule((e.target as HTMLInputElement).value)); (e.target as HTMLInputElement).value = ''; } }} />
+                <input placeholder="Dúvida sobre regras..." className="w-full bg-black p-4 text-base border border-zinc-900 rounded-lg focus:border-purple-600 outline-none transition-all" onKeyDown={e => { if(e.key === 'Enter') { explainRule((e.target as HTMLInputElement).value).then(res => addLog(res, 'ai')); (e.target as HTMLInputElement).value = ''; } }} />
               </div>
             </div>
             <div className="lg:col-span-3">
@@ -538,23 +497,95 @@ const App: React.FC = () => {
               )}
               {toolsSubTab === 'combat' && (
                 <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-                  <CombatMonitor 
-                    characters={characters} 
-                    combatState={combatState} 
-                    onCombatStateChange={setCombatState} 
-                    savedBattles={savedBattles}
-                    onSaveBattle={handleSaveBattle} 
-                    onLoadBattle={handleLoadBattle}
-                    onDeleteBattle={handleDeleteBattle}
-                    onRoll={showRoll}
-                    onGoToSheet={goToCharacterSheet}
-                  />
+                  <CombatMonitor characters={characters} combatState={combatState} onCombatStateChange={setCombatState} savedBattles={savedBattles} onSaveBattle={handleSaveBattle} onLoadBattle={handleLoadBattle} onDeleteBattle={handleDeleteBattle} onRoll={showRoll} onGoToSheet={goToCharacterSheet} />
                 </div>
               )}
             </div>
           </div>
         )}
       </main>
+
+      {/* Modal de Configurações do Sistema */}
+      {showSettings && (
+        <div className="fixed inset-0 z-[300] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-[#0c0a0e] border border-purple-600/30 rounded-3xl w-full max-w-xl overflow-hidden shadow-[0_0_50px_rgba(168,85,247,0.2)]">
+            <div className="p-8 border-b border-zinc-900 flex justify-between items-center">
+              <div>
+                <h3 className="title-font text-2xl text-purple-500 uppercase tracking-tighter">SISTEMA DE ARQUIVAMENTO</h3>
+                <p className="text-xs text-zinc-500 mt-1">Gerencie a alma dos seus dados (Backup & Restauração).</p>
+              </div>
+              <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-zinc-900 rounded-full text-zinc-500 transition-colors"><X size={24}/></button>
+            </div>
+            
+            <div className="p-8 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button 
+                  onClick={handleExportJSON}
+                  className="flex flex-col items-center gap-4 p-6 bg-zinc-950 border border-purple-900/30 rounded-2xl hover:border-purple-500 transition-all group"
+                >
+                  <div className="w-16 h-16 bg-purple-600/20 rounded-2xl flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform">
+                    <Download size={32} />
+                  </div>
+                  <div className="text-center">
+                    <span className="text-sm font-black text-white uppercase block">Exportar Save</span>
+                    <span className="text-[10px] text-zinc-500 font-bold">Gera arquivo .json</span>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={() => importFileRef.current?.click()}
+                  className="flex flex-col items-center gap-4 p-6 bg-zinc-950 border border-blue-900/30 rounded-2xl hover:border-blue-500 transition-all group"
+                >
+                  <div className="w-16 h-16 bg-blue-600/20 rounded-2xl flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform">
+                    <FileUp size={32} />
+                  </div>
+                  <div className="text-center">
+                    <span className="text-sm font-black text-white uppercase block">Importar Save</span>
+                    <span className="text-[10px] text-zinc-500 font-bold">Restaura dados de arquivo</span>
+                  </div>
+                  <input 
+                    type="file" 
+                    ref={importFileRef} 
+                    onChange={handleImportJSON} 
+                    accept=".json" 
+                    className="hidden" 
+                  />
+                </button>
+              </div>
+
+              <div className="bg-zinc-900/50 p-6 rounded-2xl border border-zinc-800">
+                <div className="flex items-center gap-3 mb-4">
+                  <Info size={18} className="text-purple-400" />
+                  <span className="text-xs font-black text-zinc-400 uppercase tracking-widest">Informação de Persistência</span>
+                </div>
+                <p className="text-[11px] text-zinc-500 leading-relaxed italic">
+                  O site salva automaticamente suas alterações no navegador (LocalStorage). Use a exportação em JSON para transferir sua campanha para outro dispositivo ou para garantir que não perderá dados se limpar o histórico do navegador.
+                </p>
+                <div className="mt-4 flex justify-between items-center text-[10px] font-bold text-zinc-600">
+                  <span>Almas Ativas: {characters.length}</span>
+                  <span>Último Auto-save: {new Date().toLocaleTimeString()}</span>
+                </div>
+              </div>
+              
+              <button 
+                onClick={() => {
+                  if(confirm("ATENÇÃO: Isso apagará TODOS os dados locais permanentemente. Deseja prosseguir?")) {
+                    localStorage.clear();
+                    window.location.reload();
+                  }
+                }}
+                className="w-full py-4 bg-red-950/20 hover:bg-red-900/40 text-red-500 border border-red-900/30 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all"
+              >
+                Purgar Todos os Dados Locais
+              </button>
+            </div>
+            
+            <div className="p-6 bg-zinc-950/80 text-center">
+               <button onClick={() => setShowSettings(false)} className="px-10 py-3 bg-purple-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-purple-500 transition-all">Sincronizar Grimório</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

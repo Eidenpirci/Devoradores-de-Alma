@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Roll, RollData } from '../types';
 
 interface DiceAnimationOverlayProps {
@@ -48,8 +48,9 @@ export const DiceAnimationOverlay: React.FC<DiceAnimationOverlayProps> = ({ roll
     if (!rollData?.rolls) {
         return initialValue;
     }
-    // FIX: Provide explicit type parameters to the reduce function and use non-null assertion to prevent 'unknown' or 'undefined' errors during accumulation.
-    return rollData.rolls.reduce<Record<string, { rolls: Roll[], indexes: number[] }>>((acc, roll, index) => {
+    // FIX: Removed explicit generic type argument from reduce to resolve "Untyped function calls may not accept type arguments" error. 
+    // Type inference from initialValue is sufficient.
+    return rollData.rolls.reduce((acc, roll, index) => {
         const key = roll.source || 'Rolagem';
         if (!acc[key]) {
             acc[key] = { rolls: [], indexes: [] };
