@@ -1,0 +1,8 @@
+{
+  "name": "Main: Devoradores de Alma - RPG Manager",
+  "description": "Um sistema completo para mestrar RPGs baseados em Soul Eater, com gerenciamento de fichas, lore, mecânicas 2d6 e integração com IA para criação de conteúdo.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
